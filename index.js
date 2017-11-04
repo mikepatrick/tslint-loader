@@ -81,18 +81,37 @@ function lint(webpackInstance, input, options) {
   
 }
 
+function buildErrorOutput(failures) {
+  var output = '';
+  failures.map((failure) => {
+    if (failure.ruleSeverity  === 'error') {
+      output = output.concat('ERROR: ')
+                     .concat(failure.fileName)
+                     .concat(' [')
+                     .concat(failure.startPosition.lineAndCharacter.line)
+                     .concat(', ')
+                     .concat(failure.startPosition.lineAndCharacter.character)
+                     .concat(']: ')
+                     .concat(failure.failure)
+                     .concat('\n');
+    }
+  });
+  return output;
+}
+
 function report(result, errEmitter, warnEmitter, emitError, failOnHint, fileOutputOpts, filename, bailEnabled) {
   if (result.failureCount === 0) return;
   if (result.failures && result.failures.length === 0) return;
 
-  result.failures.map((item) => {
-    var err = new Error(item.failure)
-    if (item.ruleSeverity === "error" && emitError) {
-      errEmitter(err);
-    } else {
-      warnEmitter(err);
+  result.failures.map((failure) => {
+    if (failure.ruleSeverity === "warning") {
+      warnEmitter(new Error(failure.failure));
     }
   });
+
+  if (emitError && result.errorCount > 0) {
+    errEmitter(new Error(buildErrorOutput(result.failures)));
+  }
 
   if (fileOutputOpts && fileOutputOpts.dir) {
     writeToFile(fileOutputOpts, result);
